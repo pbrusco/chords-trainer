@@ -111,8 +111,12 @@
                         baseNote = chord[0];
                         const chordObject = { name: chordName, quality: getChordSymbol(quality), notesIndex: notesIndex, notes: chord, inversion: 0, baseNote: baseNote };
                         chords.push(chordObject);
-                        if (baseNote != "B") {
-                            const chordSharp = sharpify(chordObject);
+                        if (baseNote != "B" && baseNote != "E") {
+                            const chordSharp = createAlteration(chordObject, "#", 1);
+                            chords.push(chordSharp);
+                        }
+                        if (baseNote != "C" && baseNote != "F") {
+                            const chordSharp = createAlteration(chordObject, "b", -1);
                             chords.push(chordSharp);
                         }
                     }
@@ -122,12 +126,12 @@
             return chords;
         }
 
-        function sharpify(chord) {
-            const sharpChord = structuredClone(chord);
-            sharpChord.name += "#";
-            sharpChord.notes = sharpChord.notes.map(x => updateNoteQuality(x, 1));
-            sharpChord.baseNote += "#";
-            return sharpChord;
+        function createAlteration(chord, symbol, direction) {
+            const newChord = structuredClone(chord);
+            newChord.name += symbol;
+            newChord.notes = newChord.notes.map(x => updateNoteQuality(x, direction));
+            newChord.baseNote += symbol;
+            return newChord;
         }
 
         function updateNoteQuality(note, quality) {
