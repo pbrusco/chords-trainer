@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+    }
+
+    button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+    }
+
+    #chordDisplay {
+        font-size: 24px;
+        margin-top: 20px;
+    }
+
+    .chordName {
+        position: relative;
+        font-size: 20px;
+    }
+
+    .chordAlteration {
+        top: -10px;
+        font-size: 17px;
+    }
+</style>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Chord Generator (with inversions)</title>
+    <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        #chordDisplay {
+            margin-top: 20px;
+        }
+
+        #sheetContainer {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Random Chord Generator (with inversions)</h1>
+    <div>
+        <label for="intervalInput">Change interval (seconds):</label>
+        <input type="number" id="intervalInput" value="10" min="1">
+    </div>
+    <div id="chordDisplay"></div>
+    <div id="sheetContainer"></div>
+    <button id="generateButton">Generate Random Chord</button>
+
+    <script>
+        let intervalId;
+        let intervalSeconds = 10; // Default interval
+
+        // Define the list of notes
+        const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+        // Define chord qualities
+        const chordQualities = {
+            maj7: [0, 0, 0, 0],
+            dom7: [0, 0, 0, -1],
+            min7: [0, -1, 0, -1],
+            halfDiminished: [0, -1, -1, -2] // Semi-diminished chord
+        };
+
+        // Function to generate chords
+        function generateChords() {
+            const chords = [];
+
+            // Iterate over each note
+            for (let i = 0; i < notes.length; i++) {
+                const note = notes[i];
+                if (note.includes("#")) { continue; }
+
+                // Iterate over each chord quality
+                for (const quality in chordQualities) {
+                    if (chordQualities.hasOwnProperty(quality)) {
+                        const intervals = [0, 4, 7, 11];
+                        const qualities = chordQualities[quality];
+                        const chord = [];
+                        const notesIndex = [];
+
+                        // Construct the chord
+                        for (let j = 0; j < intervals.length; j++) {
+                            const index = (i + intervals[j]) % notes.length;
+                            chord.push(updateNoteQuality(notes[index], qualities[j]));
+                            notesIndex.push((i + intervals[j] + qualities[j]));
+                        }
+
+                        // Add the chord to the list
+                        const chordName = note;
+                        baseNote = chord[0];
+                        const chordObject = { name: chordName, quality: getChordSymbol(quality), notesIndex: notesIndex, notes: chord, inversion: 0, baseNote: baseNote };
+                        chords.push(chordObject);
+                        if (baseNote != "B") {
+                            const chordSharp = sharpify(chordObject);
+                            chords.push(chordSharp);
+                        }
+                    }
+                }
+            }
+
+            return chords;
+        }
+
+        function sharpify(chord) {
+            const sharpChord = structuredClone(chord);
+            sharpChord.name += "#";
+            sharpChord.notes = sharpChord.notes.map(x => updateNoteQuality(x, 1));
+            sharpChord.baseNote += "#";
+            return sharpChord;
+        }
+
+        function updateNoteQuality(note, quality) {
+            if (quality == -1) {
+                if (note.includes("#")) {
+                    return note.replace("#", "");
+                } else if (!note.includes("#")) {
+                    return note + "b";
+                }
+            } else if (quality == -2) {
+                if (note.includes("#")) {
+                    return note.replace("#", "b");
+                } else if (!note.includes("#")) {
+                    return note + "bb";
+                }
+            }
+            else if (quality == 1) {
+                if (note.includes("b")) {
+                    return note.replace("b", "");
+                } else if (!note.includes("b")) {
+                    return note + "#";
+                }
+            }
+            return note;
+        }
+
+        // Function to get chord symbol
+        function getChordSymbol(quality) {
+            switch (quality) {
+                case 'maj7':
+                    return '<span class="chordAlteration">maj7</span>';
+                case 'dom7':
+                    return '<span class="chordAlteration">7</span>';
+                case 'min7':
+                    return '<span class="chordAlteration">m7</span>';
+                case 'halfDiminished':
+                    return '<span class="chordAlteration">ø</span>';
+                default:
+                    return '';
+            }
+        }
+
+        function getInversionName(inversion) {
+            switch (inversion) {
+                case 0:
+                    return 'Fund';
+                case 1:
+                    return 'I inv';
+                case 2:
+                    return 'II inv';
+                case 3:
+                    return 'III inv';
+                default:
+                    return '';
+            }
+        }
+
+        function getOctaves(notesIndex) {
+            const res = [];
+            octave = 3;
+            if (notesIndex[0] < 20) {
+                octave = 4;
+            }
+            res.push(octave)
+
+            for (let i = 1; i < notesIndex.length; i++) {
+                if (notesIndex[i - 1] % 12 > notesIndex[i] % 12) {
+                    octave += 1
+                }
+                res.push(octave)
+            }
+            return res;
+        }
+
+        // Generate chords
+        const allChords = generateChords();
+
+        // Function to randomly choose a chord
+        function chooseRandomChord() {
+            randomIndex = Math.floor(Math.random() * allChords.length);
+            const chord = allChords[randomIndex];
+            return chord
+        }
+
+        function rotate(arr, n) {
+            const len = arr.length;
+            const rotations = n % len; // handle cases where n is negative or larger than array length
+            return arr.slice(rotations).concat(arr.slice(0, rotations));
+        }
+
+
+        function randomInvert(chord) {
+            const randomIndex = Math.floor(Math.random() * chord.notes.length);
+            if (randomIndex > 0) {
+                const baseNote = chord.notes[randomIndex];
+                chord.baseNote = baseNote;
+                chord.notes = rotate(chord.notes, randomIndex);
+                chord.notesIndex = rotate(chord.notesIndex, randomIndex);
+                chord.inversion = randomIndex;
+            }
+            console.log(chord);
+            return chord
+        }
+
+        // Function to update chord display
+        function updateChordDisplay() {
+            const chordDisplay = document.getElementById('chordDisplay');
+            const randomChord = chooseRandomChord();
+            const randomChordWithInversion = randomInvert(randomChord);
+            name = randomChord.name + randomChord.quality;
+
+            if (randomChord.inversion != 0) {
+                name = name + "/" + randomChord.baseNote;
+            }
+
+            chordDisplay.innerHTML =  name 
+                + "<div>" + getInversionName(randomChord.inversion) + "</div>"
+                + "<div>[" + randomChord.notes + "]</div>";
+
+            // Render chord in music sheet
+            renderChord(randomChord);
+        }
+
+        // Function to render chord in music sheet
+        function renderChord(chord) {
+            const VF = Vex.Flow;
+            const sheetContainer = document.getElementById('sheetContainer');
+            sheetContainer.innerHTML = '';
+
+            // Create an SVG renderer and attach it to the container
+            const renderer = new VF.Renderer(sheetContainer, VF.Renderer.Backends.SVG);
+
+            // Configure the renderer
+            renderer.resize(200, 150);
+            const context = renderer.getContext();
+            context.setFont('Arial', 10, '').setBackgroundFillStyle('#f0f0f0');
+
+            // Create a stave at position 10, 40 of width 150 on the canvas.
+            const stave = new VF.Stave(10, 0, 180);
+            stave.addClef('treble').setContext(context).draw();
+
+            // Create a voice in 4/4 and add the notes
+            const voice = new VF.Voice({ num_beats: 4, beat_value: 4 });
+            const octaves = getOctaves(chord.notesIndex);
+            const chordNotesBis = chord.notes.map((note, index) => note + "/" + octaves[index])
+
+            const notes = new VF.StaveNote({ clef: 'treble', keys: chordNotesBis, duration: 'w' });
+            chord.notes.forEach((note, i) => {
+                modifier = "";
+                if (note.includes("bb")) {
+                    modifier = "bb";
+                } else if (note.includes("##")) {
+                    modifier = "##";
+                }
+                else if (note.includes("b")) {
+                    modifier = "b";
+                } else if (note.includes("#")) {
+                    modifier = "#";
+                }
+
+                if (modifier != "") {
+                    notes.addModifier(new VF.Accidental(modifier), i);
+                }
+
+            });
+            voice.addTickables([notes]);
+
+            // Format and justify the notes to 180 pixels
+            const formatter = new VF.Formatter().joinVoices([voice]).format([voice], 120);
+
+            voice.draw(context, stave);
+
+
+        }
+
+        // Start changing chords at specified interval
+        function startChangingChords(intervalSeconds) {
+            clearInterval(intervalId);
+            intervalId = setInterval(updateChordDisplay, intervalSeconds * 1000);
+        }
+
+        // Event listener for interval input change
+        document.getElementById('intervalInput').addEventListener('change', function (event) {
+            intervalSeconds = parseInt(event.target.value);
+            startChangingChords(intervalSeconds);
+        });
+
+        // Event listener for generate button click
+        document.getElementById('generateButton').addEventListener('click', updateChordDisplay);
+
+        // Start changing chords initially
+        startChangingChords(intervalSeconds);
+    </script>
+</body>
+
+</html>
