@@ -126,6 +126,73 @@
             return chords;
         }
 
+        // Function to generate synthetic guitar chord sound with improved synthesis
+        function playSyntheticChord(notes) {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const masterGain = audioCtx.createGain();
+            masterGain.connect(audioCtx.destination);
+
+            const attackTime = 0.02; // Duration of attack phase in seconds
+            const releaseTime = 0.5; // Duration of release phase in seconds
+            const sustainLevel = 0.7; // Level of sustain phase (0 to 1)
+            const decayTime = 0.3; // Duration of decay phase in seconds
+
+            // Apply frequency modulation parameters
+            const modDepth = 20; // Depth of frequency modulation
+            const modRate = 5; // Rate of frequency modulation
+
+            notes.forEach(note => {
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                oscillator.type = 'sawtooth'; // Use sawtooth wave for guitar-like timbre
+                oscillator.frequency.value = noteToFrequency(note);
+                
+                // Apply frequency modulation to oscillator frequency
+                const modOscillator = audioCtx.createOscillator();
+                modOscillator.type = 'sine'; // Use sine wave for modulation
+                modOscillator.frequency.value = modRate;
+                const modGain = audioCtx.createGain();
+                modGain.gain.value = modDepth;
+                modOscillator.connect(modGain);
+                modGain.connect(oscillator.frequency);
+                modOscillator.start();
+
+                // Apply envelope to control volume over time
+                const now = audioCtx.currentTime;
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(1, now + attackTime);
+                gainNode.gain.setTargetAtTime(sustainLevel, now + attackTime, decayTime);
+                gainNode.gain.setValueAtTime(sustainLevel, now + attackTime + decayTime);
+                gainNode.gain.linearRampToValueAtTime(0, now + attackTime + decayTime + releaseTime);
+
+                oscillator.connect(gainNode).connect(masterGain);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + attackTime + decayTime + releaseTime);
+            });
+        }
+
+        // Function to convert note name to frequency
+        function noteToFrequency(note) {
+            const noteMap = {
+                'C': 261.63,
+                'C#': 277.18,
+                'D': 293.66,
+                'D#': 311.13,
+                'E': 329.63,
+                'F': 349.23,
+                'F#': 369.99,
+                'G': 392.00,
+                'G#': 415.30,
+                'A': 440.00,
+                'A#': 466.16,
+                'B': 493.88
+            };
+            return noteMap[note];
+        }
+
+
+
         function createAlteration(chord, symbol, direction) {
             const newChord = structuredClone(chord);
             newChord.name += symbol;
@@ -252,7 +319,9 @@
                 + "<div>[" + randomChord.notes + "]</div>";
 
             // Render chord in music sheet
+            playSyntheticChord(randomChord.notes);
             renderChord(randomChord);
+
         }
 
         // Function to render chord in music sheet
